@@ -1,11 +1,19 @@
 package org.telegram.repostcleanerbot.bot;
 
+import it.tdlight.client.TDLibSettings;
 import org.telegram.abilitybots.api.bot.BaseAbilityBot;
+import org.telegram.repostcleanerbot.Constants;
+import org.telegram.repostcleanerbot.tdlib.entity.Chat;
+import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import javax.validation.constraints.NotNull;
+import java.io.Serializable;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -16,9 +24,11 @@ import static org.telegram.abilitybots.api.util.AbilityUtils.getUser;
 public class BotContext {
 
     private final BaseAbilityBot bot;
+    private final TDLibSettings tdLibSettings;
 
-    public BotContext(BaseAbilityBot bot) {
+    public BotContext(BaseAbilityBot bot, TDLibSettings tdLibSettings) {
        this.bot = bot;
+       this.tdLibSettings = tdLibSettings;
     }
 
     public Predicate<Update> isChatInState(String stateDbName) {
@@ -28,14 +38,30 @@ public class BotContext {
         };
     }
 
+    public Predicate<Update> notStartCommand() {
+        return upd -> upd.hasMessage() && !upd.getMessage().getText().equalsIgnoreCase("/start");
+    }
+
+    public Predicate<Update> isChatNotInState(String stateDbName) {
+        return isChatInState(stateDbName).negate();
+    }
+
     public void enterState(Update upd, String stateDbName) {
+        enterState(getUser(upd).getId(), stateDbName);
+    }
+
+    public void enterState(Long userId, String stateDbName) {
         Map<String, Boolean> chatCleaningStateDb = bot.db().getMap(stateDbName);
-        chatCleaningStateDb.put(getUser(upd).getId().toString(), true);
+        chatCleaningStateDb.put(userId.toString(), true);
     }
 
     public void exitState(Update upd, String stateDbName) {
+        exitState(getUser(upd).getId(), stateDbName);
+    }
+
+    public void exitState(Long userId, String stateDbName) {
         Map<String, Boolean> chatCleaningStateDb = bot.db().getMap(stateDbName);
-        chatCleaningStateDb.put(getUser(upd).getId().toString(), false);
+        chatCleaningStateDb.put(userId.toString(), false);
     }
 
     public void hidePreviousReplyMarkup(Update upd) {
@@ -46,16 +72,28 @@ public class BotContext {
                         .messageId(upd.getCallbackQuery().getMessage().getMessageId())
                         .replyMarkup(null)
                         .build());
-            } catch (TelegramApiException e) {
-                e.printStackTrace();
+            } catch (TelegramApiException ignore) {
             }
         }
     }
 
+    public <T extends Serializable, Method extends BotApiMethod<T>> T execute(Method method) {
+        try {
+            return bot.sender().execute(method);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
 
     @NotNull
-    public Predicate<Update> hasCallbackQuery(String msg) {
-        return upd -> upd.hasCallbackQuery() && upd.getCallbackQuery().getData().equalsIgnoreCase(msg);
+    public Predicate<Update> hasCallbackQuery(String... possibleCallbackData) {
+        return upd -> upd.hasCallbackQuery() && Arrays.stream(possibleCallbackData).anyMatch(data -> upd.getCallbackQuery().getData().equalsIgnoreCase(data)) ;
+    }
+
+    public Predicate<Update> cancelKeyboardButtonSelected() {
+        return upd -> upd.hasMessage() && upd.getMessage().getText().equals(Constants.INLINE_BUTTONS.CANCEL_KEYBOARD_BUTTON) ;
     }
 
     public BaseAbilityBot bot() {
@@ -64,5 +102,9 @@ public class BotContext {
 
     public Predicate<Update> itemFromReplyKeyboardSelected(List<String> replyItems) {
         return upd -> upd.hasMessage() && replyItems.contains(upd.getMessage().getText());
+    }
+
+    public TDLibSettings getTdLibSettings() {
+        return this.tdLibSettings;
     }
 }
