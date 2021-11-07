@@ -1,28 +1,24 @@
 package org.telegram.repostcleanerbot.tdlib;
 
+import it.tdlight.client.APIToken;
 import it.tdlight.client.TDLibSettings;
 import org.telegram.repostcleanerbot.tdlib.client.BotEmbadedTelegramClient;
 
+import javax.inject.Inject;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
 public class ClientManager {
-    private static ClientManager instance;
+
+    @Inject
+    private APIToken apiToken;
 
     private Map<Long, BotEmbadedTelegramClient> clientPerUser = new HashMap<>();
 
-    private ClientManager() {}
-
-    public static ClientManager getInstance() {
-        if(instance == null) {
-            instance = new ClientManager();
-        }
-        return instance;
-    }
-
-    public BotEmbadedTelegramClient getTelegramClientForUser(long userId, TDLibSettings settings) {
+    synchronized public BotEmbadedTelegramClient getTelegramClientForUser(long userId) {
+        TDLibSettings settings = TDLibSettings.create(apiToken);
         BotEmbadedTelegramClient client = clientPerUser.get(userId);
         if(client == null) {
             // Configure the session directory

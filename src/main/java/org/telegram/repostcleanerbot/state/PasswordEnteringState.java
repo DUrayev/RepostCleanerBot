@@ -9,16 +9,22 @@ import org.telegram.repostcleanerbot.factory.FlowFactory;
 import org.telegram.repostcleanerbot.tdlib.ClientManager;
 import org.telegram.repostcleanerbot.tdlib.client.BotEmbadedTelegramClient;
 
+import javax.inject.Inject;
+
 import static org.telegram.abilitybots.api.util.AbilityUtils.getChatId;
 import static org.telegram.abilitybots.api.util.AbilityUtils.getUser;
 import static org.telegram.repostcleanerbot.Constants.STATE_DB;
 
 public class PasswordEnteringState implements Flow {
-    private final BotContext botContext;
 
-    public PasswordEnteringState(BotContext botContext) {
-        this.botContext = botContext;
-    }
+    @Inject
+    private BotContext botContext;
+
+    @Inject
+    private FlowFactory flowFactory;
+
+    @Inject
+    private ClientManager clientManager;
 
     @Override
     public ReplyFlow getFlow() {
@@ -29,7 +35,7 @@ public class PasswordEnteringState implements Flow {
                 .action((bot, upd) -> {
                     botContext.hidePreviousReplyMarkup(upd);
                     String password = upd.getMessage().getText();
-                    BotEmbadedTelegramClient client = ClientManager.getInstance().getTelegramClientForUser(getUser(upd).getId(), botContext.getTdLibSettings());
+                    BotEmbadedTelegramClient client = clientManager.getTelegramClientForUser(getUser(upd).getId());
 
                     TdApi.CheckAuthenticationPassword response = new TdApi.CheckAuthenticationPassword(password);
                     client.send(response, ok -> {
@@ -41,8 +47,8 @@ public class PasswordEnteringState implements Flow {
                         }
                     });
                 })
-                .next(FlowFactory.getAllChatsProcessingFlow(botContext))
-                .next(FlowFactory.getSpecificChatProcessingFlow(botContext))
+                .next(flowFactory.getAllChatsProcessingFlow())
+                .next(flowFactory.getSpecificChatProcessingFlow())
                 .build();
     }
 }

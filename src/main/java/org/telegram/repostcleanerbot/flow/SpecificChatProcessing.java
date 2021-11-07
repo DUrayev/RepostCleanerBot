@@ -1,13 +1,13 @@
 package org.telegram.repostcleanerbot.flow;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import org.telegram.abilitybots.api.objects.Reply;
 import org.telegram.abilitybots.api.objects.ReplyFlow;
 import org.telegram.repostcleanerbot.Constants;
 import org.telegram.repostcleanerbot.bot.BotContext;
 import org.telegram.repostcleanerbot.bot.Flow;
 import org.telegram.repostcleanerbot.factory.KeyboardFactory;
+import org.telegram.repostcleanerbot.repository.UserChatsRepository;
+import org.telegram.repostcleanerbot.repository.UserChatsRepostedFromRepository;
 import org.telegram.repostcleanerbot.tdlib.ClientManager;
 import org.telegram.repostcleanerbot.tdlib.EventManager;
 import org.telegram.repostcleanerbot.tdlib.client.BotEmbadedTelegramClient;
@@ -22,7 +22,7 @@ import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 
-import java.lang.reflect.Type;
+import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
@@ -34,13 +34,18 @@ import static org.telegram.repostcleanerbot.Constants.CHATS_LIMIT;
 import static org.telegram.repostcleanerbot.Constants.DB;
 
 public class SpecificChatProcessing implements Flow {
-    private final BotContext botContext;
 
-    private static Gson gson = new Gson();
+    @Inject
+    private BotContext botContext;
 
-    public SpecificChatProcessing(BotContext botContext) {
-        this.botContext = botContext;
-    }
+    @Inject
+    private UserChatsRepostedFromRepository repostedFromRepository;
+
+    @Inject
+    private UserChatsRepository userChatsRepository;
+
+    @Inject
+    private ClientManager clientManager;
 
     @Override
     public ReplyFlow getFlow() {
@@ -49,15 +54,12 @@ public class SpecificChatProcessing implements Flow {
                 .action((bot, upd) -> {
                     String selectedTitleChatToClean = upd.getMessage().getText();
 
-                    Map<String, String> userChatsDb = botContext.bot().db().getMap(DB.USER_CHATS);
-                    String userChatsJson = userChatsDb.get(getUser(upd).getId().toString());
-                    Type listType = new TypeToken<ArrayList<Chat>>(){}.getType();
-                    List<Chat> userChats = gson.fromJson(userChatsJson, listType);
-                    userChatsDb.put(getUser(upd).getId().toString(), "[]");
+                    List<Chat> userChats = userChatsRepository.get(getUser(upd).getId());
+                    userChatsRepository.save(getUser(upd).getId(), Collections.emptyList());
 
                     Chat selectedChatToClean = userChats.stream().filter(chat -> chat.getTitle().equals(selectedTitleChatToClean)).findFirst().get();
 
-                    BotEmbadedTelegramClient client = ClientManager.getInstance().getTelegramClientForUser(getUser(upd).getId(), botContext.getTdLibSettings());
+                    BotEmbadedTelegramClient client = clientManager.getTelegramClientForUser(getUser(upd).getId());
                     EventManager getRepostsFromChatEventManager = new EventManager();
                     GetRepostsFromChatRequest getRepostsFromChatRequest = new GetRepostsFromChatRequest(client, getRepostsFromChatEventManager);
 
@@ -74,8 +76,7 @@ public class SpecificChatProcessing implements Flow {
                                 repostsStat.getRepostedFrom().setTitle(newTitleWithStatInfo);
                             });
 
-                            Map<String, String> userRepostsStatInSpecificChannelDb = botContext.bot().db().getMap(DB.USER_REPOSTS_STAT_IN_SPECIFIC_CHANNEL);
-                            userRepostsStatInSpecificChannelDb.put(getUser(upd).getId().toString(), gson.toJson(repostsStatSortedList));
+                            repostedFromRepository.save(getUser(upd).getId(), repostsStatSortedList);
 
                             botContext.enterState(upd, Constants.STATE_DB.CLEAN_REPOSTS_FROM_SPECIFIC_CHAT_STATE_DB);
                             botContext.execute(
@@ -104,7 +105,7 @@ public class SpecificChatProcessing implements Flow {
                             SendMessage.builder()
                                     .text(String.format(analyzedMessagesCountNotification, analyzedMessagesCount.get()))
                                     .chatId(getChatId(upd).toString())
-                                    .replyMarkup(KeyboardFactory.withOneLineButtons())
+                                    .replyMarkup(KeyboardFactory.withOneLineButtons()) //without this empty reply markup you're not able to edit message
                                     .allowSendingWithoutReply(false)
                                     .build());
                     Integer messageWithProcessedCountInfoId = -1;
@@ -144,7 +145,7 @@ public class SpecificChatProcessing implements Flow {
                 .action((bot, upd) -> {
                     botContext.hidePreviousReplyMarkup(upd);
 
-                    BotEmbadedTelegramClient client = ClientManager.getInstance().getTelegramClientForUser(getUser(upd).getId(), botContext.getTdLibSettings());
+                    BotEmbadedTelegramClient client = clientManager.getTelegramClientForUser(getUser(upd).getId());
                     EventManager getChatsRequestEventManager = new EventManager();
                     GetChatsRequest getChatsRequest = new GetChatsRequest(client, getChatsRequestEventManager);
 
@@ -161,12 +162,11 @@ public class SpecificChatProcessing implements Flow {
                             chat.setTitle(index + ". " + chat.getTitle());
                         }
 
-                        Map<String, String> userChatsDb = botContext.bot().db().getMap(DB.USER_CHATS);
-                        userChatsDb.put(getUser(upd).getId().toString(), gson.toJson(chatsWhereYouCanSendMessage));
+                        userChatsRepository.save(getUser(upd).getId(), chatsWhereYouCanSendMessage);
 
                         botContext.execute(
                                 SendMessage.builder()
-                                        .text("Select the chat where you can send messages.\nWhich one do you want to analyze and clean?")
+                                        .text("There are " + chatsWhereYouCanSendMessage.size() + " chats where you can send messages\nWhich one do you want to analyze?")
                                         .chatId(getChatId(upd).toString())
                                         .replyMarkup(KeyboardFactory.replyKeyboardWithCancelButtons(chatsWhereYouCanSendMessage.stream().map(Chat::getTitle).collect(Collectors.toList()), "Select channel name"))
                                         .allowSendingWithoutReply(false)
@@ -184,10 +184,7 @@ public class SpecificChatProcessing implements Flow {
     private Predicate<Update> chatFromReplyKeyboardSelected() {
         return upd -> {
             if(upd.hasMessage() && !botContext.cancelKeyboardButtonSelected().test(upd)) {
-                Map<String, String> userChatsDb = botContext.bot().db().getMap(DB.USER_CHATS);
-                String userChatsJson = userChatsDb.get(getUser(upd).getId().toString());
-                Type listType = new TypeToken<ArrayList<Chat>>(){}.getType();
-                List<Chat> userChats = gson.fromJson(userChatsJson, listType);
+                List<Chat> userChats = userChatsRepository.get(getUser(upd).getId());
                 return userChats.stream().anyMatch(chat -> chat.getTitle().equals(upd.getMessage().getText()));
             } else {
                 return false;

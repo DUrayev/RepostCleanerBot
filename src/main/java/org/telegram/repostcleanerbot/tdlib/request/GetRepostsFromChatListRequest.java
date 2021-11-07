@@ -21,7 +21,7 @@ public class GetRepostsFromChatListRequest extends Request {
     private AtomicInteger processedChatCount = new AtomicInteger(0);
 
     public enum EVENTS {
-        FINISH
+        FINISH, CHAT_PROCESSING_FINISHED, BATCH_OF_MESSAGES_RECEIVED
     }
 
     public GetRepostsFromChatListRequest(BotEmbadedTelegramClient client, EventManager eventManager) {
@@ -47,12 +47,16 @@ public class GetRepostsFromChatListRequest extends Request {
                 EventManager getRepostsFromChatRequestEventManager = new EventManager();
                 getRepostsFromChatRequestEventManager.addEventHandler(GetRepostsFromChatRequest.EVENTS.FINISH, reposts -> {
                     result.addAll((Collection<? extends Repost>) reposts);
-                    log.info("'{}' chat analyzed for history. Total progress: {} out of {}", chat.getTitle(), processedChatCount.get() + 1 , totalAmountOfChats);
-                    if(processedChatCount.incrementAndGet() == totalAmountOfChats) {
+                    int newProcessedChatCount = processedChatCount.incrementAndGet();
+                    eventManager.fireEvent(EVENTS.CHAT_PROCESSING_FINISHED, newProcessedChatCount);
+                    if(newProcessedChatCount == totalAmountOfChats) {
                         eventManager.fireEvent(EVENTS.FINISH, result);
                     } else if(currentBatchProcessedChatCount.incrementAndGet() == currentBatchSize) {
                         processBatch(chatListBatches, batchNumber + 1);
                     }
+                });
+                getRepostsFromChatRequestEventManager.addEventHandler(GetRepostsFromChatRequest.EVENTS.BATCH_OF_MESSAGES_RECEIVED, messagesBatchSize -> {
+                    eventManager.fireEvent(EVENTS.BATCH_OF_MESSAGES_RECEIVED, messagesBatchSize);
                 });
                 GetRepostsFromChatRequest getRepostsFromChatRequest = new GetRepostsFromChatRequest(this.client, getRepostsFromChatRequestEventManager);
                 getRepostsFromChatRequest.execute(chat);

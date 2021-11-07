@@ -17,10 +17,21 @@ public class DeleteMessagesRequest extends Request {
         super(client, eventManager);
     }
 
-    public void execute(long chatId, List<Long> messageIds, boolean revoke) {
-        client.send(new TdApi.DeleteMessages(chatId, messageIds.stream().mapToLong(l -> l).toArray(), revoke), okResult -> {
-            boolean isSuccess = !okResult.isError();
-            eventManager.fireEvent(EVENTS.FINISH, isSuccess);
+    public void execute(long chatId, List<Long> messageIds) {
+        client.send(new TdApi.DeleteMessages(chatId, messageIds.stream().mapToLong(l -> l).toArray(), true), okResult -> {
+            boolean isSuccessWithRevoke = !okResult.isError();
+            if(!isSuccessWithRevoke) {
+                log.warn("Can't delete messaged with 'revoke'='true' param. Try to delete without revoke");
+                client.send(new TdApi.DeleteMessages(chatId, messageIds.stream().mapToLong(l -> l).toArray(), false), okResultWithoutRevoke -> {
+                    boolean isSuccessWithoutRevoke = !okResultWithoutRevoke.isError();
+                    if(!isSuccessWithoutRevoke) {
+                        log.warn(okResult.getError().message);
+                    }
+                    eventManager.fireEvent(EVENTS.FINISH, isSuccessWithoutRevoke);
+                });
+            } else {
+                eventManager.fireEvent(EVENTS.FINISH, true);
+            }
         });
     }
 

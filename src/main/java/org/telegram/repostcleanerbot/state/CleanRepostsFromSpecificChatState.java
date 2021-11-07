@@ -1,12 +1,10 @@
 package org.telegram.repostcleanerbot.state;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import org.telegram.abilitybots.api.objects.Reply;
-import org.telegram.repostcleanerbot.Constants;
 import org.telegram.repostcleanerbot.bot.BotContext;
 import org.telegram.repostcleanerbot.bot.State;
 import org.telegram.repostcleanerbot.factory.KeyboardFactory;
+import org.telegram.repostcleanerbot.repository.UserChatsRepostedFromRepository;
 import org.telegram.repostcleanerbot.tdlib.ClientManager;
 import org.telegram.repostcleanerbot.tdlib.EventManager;
 import org.telegram.repostcleanerbot.tdlib.client.BotEmbadedTelegramClient;
@@ -16,10 +14,9 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 
-import java.lang.reflect.Type;
-import java.util.ArrayList;
+import javax.inject.Inject;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -29,12 +26,15 @@ import static org.telegram.repostcleanerbot.Constants.INLINE_BUTTONS;
 import static org.telegram.repostcleanerbot.Constants.STATE_DB;
 
 public class CleanRepostsFromSpecificChatState implements State {
-    private final BotContext botContext;
-    private static Gson gson = new Gson();
 
-    public CleanRepostsFromSpecificChatState(BotContext botContext) {
-        this.botContext = botContext;
-    }
+    @Inject
+    private BotContext botContext;
+
+    @Inject
+    private UserChatsRepostedFromRepository repostedFromRepository;
+
+    @Inject
+    private ClientManager clientManager;
 
     @Override
     public Reply getReply() {
@@ -45,14 +45,11 @@ public class CleanRepostsFromSpecificChatState implements State {
             if(selectedChatToClean.equals(INLINE_BUTTONS.CANCEL_KEYBOARD_BUTTON)) {
                 finishCleaningAndNotify(upd, false);
             } else {
-                Map<String, String> userChatsRepostedFromDb = botContext.bot().db().getMap(Constants.DB.USER_REPOSTS_STAT_IN_SPECIFIC_CHANNEL);
-                String userChatsRepostedFromJson = userChatsRepostedFromDb.get(getUser(upd).getId().toString());
-                Type listType = new TypeToken<ArrayList<RepostsStat>>(){}.getType();
-                List<RepostsStat> userRepostsStatList = gson.fromJson(userChatsRepostedFromJson, listType);
+                List<RepostsStat> userRepostsStatList = repostedFromRepository.get(getUser(upd).getId());
                 RepostsStat selectedChatRepostedFromToClean = userRepostsStatList.stream().filter(repostsStat -> repostsStat.getRepostedFrom().getTitle().equals(upd.getMessage().getText())).findFirst().get();
                 List<Long> repostMessageIdList = selectedChatRepostedFromToClean.getRepostMessageIdList();
 
-                BotEmbadedTelegramClient client = ClientManager.getInstance().getTelegramClientForUser(getUser(upd).getId(), botContext.getTdLibSettings());
+                BotEmbadedTelegramClient client = clientManager.getTelegramClientForUser(getUser(upd).getId());
                 EventManager deleteMessagesEventManager = new EventManager();
                 DeleteMessagesRequest deleteMessagesRequest = new DeleteMessagesRequest(client, deleteMessagesEventManager);
 
@@ -60,7 +57,7 @@ public class CleanRepostsFromSpecificChatState implements State {
                     if((Boolean) deleteResult) {
                         userRepostsStatList.remove(selectedChatRepostedFromToClean);
                         if(userRepostsStatList.size() > 0) {
-                            userChatsRepostedFromDb.put(getUser(upd).getId().toString(), gson.toJson(userRepostsStatList));
+                            repostedFromRepository.save(getUser(upd).getId(), userRepostsStatList);
                             botContext.execute(
                                     SendMessage.builder()
                                             .text("Reposts from chat '" + selectedChatToClean + "' are cleaned.\nWould you like to clean more reposts?")
@@ -81,7 +78,7 @@ public class CleanRepostsFromSpecificChatState implements State {
                                         .build());
                     }
                 });
-                deleteMessagesRequest.execute(selectedChatRepostedFromToClean.getRepostedIn().getId(), repostMessageIdList, true);
+                deleteMessagesRequest.execute(selectedChatRepostedFromToClean.getRepostedIn().getId(), repostMessageIdList);
             }
         },
             botContext.isChatInState(STATE_DB.CLEAN_REPOSTS_FROM_SPECIFIC_CHAT_STATE_DB),
@@ -91,8 +88,7 @@ public class CleanRepostsFromSpecificChatState implements State {
 
     private void finishCleaningAndNotify(Update upd, boolean allRepostsAreCleaned) {
         botContext.exitState(upd, STATE_DB.CLEAN_REPOSTS_FROM_SPECIFIC_CHAT_STATE_DB);
-        Map<String, String> userChatsRepostedFromDb = botContext.bot().db().getMap(Constants.DB.USER_REPOSTS_STAT_IN_SPECIFIC_CHANNEL);
-        userChatsRepostedFromDb.put(getUser(upd).getId().toString(), "[]");
+        repostedFromRepository.save(getUser(upd).getId(), Collections.emptyList());
 
         String responseText = "Ok, cleaning finished. You can /start again";
         if(allRepostsAreCleaned) {
@@ -113,10 +109,7 @@ public class CleanRepostsFromSpecificChatState implements State {
                 return true;
             }
             if(upd.hasMessage()) {
-                Map<String, String> userChatsRepostedFromDb = botContext.bot().db().getMap(Constants.DB.USER_REPOSTS_STAT_IN_SPECIFIC_CHANNEL);
-                String userChatsRepostedFromJson = userChatsRepostedFromDb.get(getUser(upd).getId().toString());
-                Type listType = new TypeToken<ArrayList<RepostsStat>>(){}.getType();
-                List<RepostsStat> userRepostsStatList = gson.fromJson(userChatsRepostedFromJson, listType);
+                List<RepostsStat> userRepostsStatList = repostedFromRepository.get(getUser(upd).getId());
                 return userRepostsStatList.stream().anyMatch(repostsStat -> repostsStat.getRepostedFrom().getTitle().equals(upd.getMessage().getText()));
             } else {
                 return false;

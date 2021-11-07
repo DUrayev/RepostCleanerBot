@@ -1,16 +1,14 @@
 package org.telegram.repostcleanerbot.bot;
 
-import it.tdlight.client.TDLibSettings;
+import org.telegram.abilitybots.api.bot.AbilityBot;
 import org.telegram.abilitybots.api.bot.BaseAbilityBot;
 import org.telegram.repostcleanerbot.Constants;
-import org.telegram.repostcleanerbot.tdlib.entity.Chat;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import javax.inject.Inject;
 import javax.validation.constraints.NotNull;
 import java.io.Serializable;
 import java.util.Arrays;
@@ -23,13 +21,8 @@ import static org.telegram.abilitybots.api.util.AbilityUtils.getUser;
 
 public class BotContext {
 
-    private final BaseAbilityBot bot;
-    private final TDLibSettings tdLibSettings;
-
-    public BotContext(BaseAbilityBot bot, TDLibSettings tdLibSettings) {
-       this.bot = bot;
-       this.tdLibSettings = tdLibSettings;
-    }
+    @Inject
+    private AbilityBot bot;
 
     public Predicate<Update> isChatInState(String stateDbName) {
         return upd -> {
@@ -102,9 +95,5 @@ public class BotContext {
 
     public Predicate<Update> itemFromReplyKeyboardSelected(List<String> replyItems) {
         return upd -> upd.hasMessage() && replyItems.contains(upd.getMessage().getText());
-    }
-
-    public TDLibSettings getTdLibSettings() {
-        return this.tdLibSettings;
     }
 }

@@ -23,6 +23,7 @@ import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import javax.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -33,24 +34,25 @@ import static org.telegram.repostcleanerbot.Constants.*;
 @Log4j2
 public class Login implements Flow {
 
-    private final BotContext botContext;
+    @Inject
+    private BotContext botContext;
 
-    public Login(BotContext botContext) {
-        this.botContext = botContext;
-    }
+    @Inject
+    private FlowFactory flowFactory;
+
+    @Inject
+    private ClientManager clientManager;
+
 
     @Override
     public ReplyFlow getFlow() {
-
-
-
         return ReplyFlow.builder(botContext.bot().db())
                 .onlyIf(botContext.hasCallbackQuery(Constants.INLINE_BUTTONS.LOGIN))
                 .action((bot, upd) -> {
                     botContext.hidePreviousReplyMarkup(upd);
                     botContext.enterState(upd, STATE_DB.LOGIN_STATE_DB);
                     botContext.exitState(upd, STATE_DB.PASSWORD_ENTERING_STATE_DB);
-                    BotEmbadedTelegramClient client = ClientManager.getInstance().getTelegramClientForUser(getUser(upd).getId(), botContext.getTdLibSettings());
+                    BotEmbadedTelegramClient client = clientManager.getTelegramClientForUser(getUser(upd).getId());
                     if(client.isClientInitialized()) {
                         client.send(new TdApi.GetAuthorizationState(), (result) -> {
                             client.handleUpdate(new TdApi.UpdateAuthorizationState(result.get()));
@@ -66,8 +68,8 @@ public class Login implements Flow {
                         client.start(authenticationData);
                     }
                 })
-                .next(FlowFactory.getAllChatsProcessingFlow(botContext))
-                .next(FlowFactory.getSpecificChatProcessingFlow(botContext))
+                .next(flowFactory.getAllChatsProcessingFlow())
+                .next(flowFactory.getSpecificChatProcessingFlow())
                 .next(phoneNumberOfQrCodeSelectionFlow())
                 .build();
     }
@@ -125,7 +127,7 @@ public class Login implements Flow {
                 .onlyIf(botContext.isChatInState(STATE_DB.LOGIN_STATE_DB))
                 .action((bot, upd) -> {
                     botContext.hidePreviousReplyMarkup(upd);
-                    BotEmbadedTelegramClient client = ClientManager.getInstance().getTelegramClientForUser(getUser(upd).getId(), botContext.getTdLibSettings());
+                    BotEmbadedTelegramClient client = clientManager.getTelegramClientForUser(getUser(upd).getId());
 
                     switch (upd.getCallbackQuery().getData()) {
                         case INLINE_BUTTONS.PHONE_NUMBER_LOGIN:
@@ -140,8 +142,8 @@ public class Login implements Flow {
                             break;
                     }
                 })
-                .next(FlowFactory.getAllChatsProcessingFlow(botContext))
-                .next(FlowFactory.getSpecificChatProcessingFlow(botContext))
+                .next(flowFactory.getAllChatsProcessingFlow())
+                .next(flowFactory.getSpecificChatProcessingFlow())
                 .build();
     }
 
