@@ -1,4 +1,4 @@
-package org.telegram.repostcleanerbot.state;
+package org.telegram.repostcleanerbot.flow.state;
 
 import it.tdlight.jni.TdApi;
 import org.telegram.abilitybots.api.objects.Flag;

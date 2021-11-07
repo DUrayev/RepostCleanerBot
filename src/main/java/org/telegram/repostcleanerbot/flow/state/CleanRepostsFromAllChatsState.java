@@ -1,5 +1,6 @@
-package org.telegram.repostcleanerbot.state;
+package org.telegram.repostcleanerbot.flow.state;
 
+import org.jetbrains.annotations.NotNull;
 import org.telegram.abilitybots.api.objects.Reply;
 import org.telegram.repostcleanerbot.bot.BotContext;
 import org.telegram.repostcleanerbot.bot.State;
@@ -19,6 +20,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -37,7 +39,6 @@ public class CleanRepostsFromAllChatsState implements State {
 
     @Inject
     private ClientManager clientManager;
-
 
     @Override
     public Reply getReply() {
@@ -61,37 +62,42 @@ public class CleanRepostsFromAllChatsState implements State {
                 int totalChatsToCleanIn = repostsToCleanGroupedByRepostedInId.keySet().size();
                 AtomicInteger cleanedChatsCount = new AtomicInteger(0);
                 repostsToCleanGroupedByRepostedInId.forEach((repostedInChatId, listOfReposts) -> {
-                    deleteMessagesEventManager.addEventHandler(DeleteMessagesRequest.EVENTS.FINISH, deleteResult -> {
-                        if((Boolean) deleteResult) {
-                            if(cleanedChatsCount.incrementAndGet() == totalChatsToCleanIn) {
-                                repostsListGroupedByRepostedFrom.removeIf(groupedRepostsList -> groupedRepostsList.get(0).getRepostedFrom().getTitle().equals(selectedChatToClean));
-                                if(repostsListGroupedByRepostedFrom.size() > 0) {
-                                    repostsRepository.save(getUser(upd).getId(), repostsListGroupedByRepostedFrom);
-                                    botContext.execute(
-                                            SendMessage.builder()
-                                                    .text("Reposts from channel '" + selectedChatToClean + "' are cleaned everywhere.\nWould you like to clean more reposts?")
-                                                    .chatId(getChatId(upd).toString())
-                                                    .replyMarkup(KeyboardFactory.replyKeyboardWithCancelButtons(repostsListGroupedByRepostedFrom.stream().map(groupedList -> groupedList.get(0).getRepostedFrom().getTitle()).collect(Collectors.toList()), "Select channel name"))
-                                                    .allowSendingWithoutReply(false)
-                                                    .build());
-                                } else {
-                                    finishCleaningAndNotify(upd, true);
-                                }
-                            }
-                        } else {
-                            botContext.execute(
-                                    SendMessage.builder()
-                                            .text("Reposts of channel '" + selectedChatToClean + "' are  not cleaned in '" + listOfReposts.get(0).getRepostedIn().getTitle() + "' because of some unexpected error.\nYou can try one more time or cancel")
-                                            .chatId(getChatId(upd).toString())
-                                            .replyMarkup(KeyboardFactory.replyKeyboardWithCancelButtons(repostsListGroupedByRepostedFrom.stream().map(groupedList -> groupedList.get(0).getRepostedFrom().getTitle()).collect(Collectors.toList()), "Select channel name"))
-                                            .allowSendingWithoutReply(false)
-                                            .build());
-                        }
-                    });
+                    deleteMessagesEventManager.addEventHandler(DeleteMessagesRequest.EVENTS.FINISH, onMessagesDeletedFromChat(upd, selectedChatToClean, repostsListGroupedByRepostedFrom, totalChatsToCleanIn, cleanedChatsCount, listOfReposts));
                     deleteMessagesRequest.execute(repostedInChatId, listOfReposts.stream().map(Repost::getId).collect(Collectors.toList()));
                 });
             }
         }, botContext.isChatInState(STATE_DB.CLEAN_REPOSTS_FROM_ALL_CHATS_STATE_DB), repostedFromChatFromReplyKeyboardSelectedOrCancelBtn());
+    }
+
+    @NotNull
+    private Consumer<Object> onMessagesDeletedFromChat(Update upd, String selectedChatToClean, List<List<Repost>> repostsListGroupedByRepostedFrom, int totalChatsToCleanIn, AtomicInteger cleanedChatsCount, List<Repost> listOfReposts) {
+        return deleteResult -> {
+            if ((Boolean) deleteResult) {
+                if (cleanedChatsCount.incrementAndGet() == totalChatsToCleanIn) {
+                    repostsListGroupedByRepostedFrom.removeIf(groupedRepostsList -> groupedRepostsList.get(0).getRepostedFrom().getTitle().equals(selectedChatToClean));
+                    if (repostsListGroupedByRepostedFrom.size() > 0) {
+                        repostsRepository.save(getUser(upd).getId(), repostsListGroupedByRepostedFrom);
+                        botContext.execute(
+                                SendMessage.builder()
+                                        .text("Reposts from channel '" + selectedChatToClean + "' are cleaned everywhere.\nWould you like to clean more reposts?")
+                                        .chatId(getChatId(upd).toString())
+                                        .replyMarkup(KeyboardFactory.replyKeyboardWithCancelButtons(repostsListGroupedByRepostedFrom.stream().map(groupedList -> groupedList.get(0).getRepostedFrom().getTitle()).collect(Collectors.toList()), "Select channel name"))
+                                        .allowSendingWithoutReply(false)
+                                        .build());
+                    } else {
+                        finishCleaningAndNotify(upd, true);
+                    }
+                }
+            } else {
+                botContext.execute(
+                        SendMessage.builder()
+                                .text("Reposts of channel '" + selectedChatToClean + "' are  not cleaned in '" + listOfReposts.get(0).getRepostedIn().getTitle() + "' because of some unexpected error.\nYou can try one more time or cancel")
+                                .chatId(getChatId(upd).toString())
+                                .replyMarkup(KeyboardFactory.replyKeyboardWithCancelButtons(repostsListGroupedByRepostedFrom.stream().map(groupedList -> groupedList.get(0).getRepostedFrom().getTitle()).collect(Collectors.toList()), "Select channel name"))
+                                .allowSendingWithoutReply(false)
+                                .build());
+            }
+        };
     }
 
     private void finishCleaningAndNotify(Update upd, boolean allRepostsAreCleaned) {

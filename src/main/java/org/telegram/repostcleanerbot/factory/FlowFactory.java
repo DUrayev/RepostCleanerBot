@@ -5,9 +5,9 @@ import org.telegram.abilitybots.api.objects.ReplyFlow;
 import org.telegram.repostcleanerbot.flow.AllChatsProcessing;
 import org.telegram.repostcleanerbot.flow.Login;
 import org.telegram.repostcleanerbot.flow.SpecificChatProcessing;
-import org.telegram.repostcleanerbot.state.CleanRepostsFromAllChatsState;
-import org.telegram.repostcleanerbot.state.CleanRepostsFromSpecificChatState;
-import org.telegram.repostcleanerbot.state.PasswordEnteringState;
+import org.telegram.repostcleanerbot.flow.state.CleanRepostsFromAllChatsState;
+import org.telegram.repostcleanerbot.flow.state.CleanRepostsFromSpecificChatState;
+import org.telegram.repostcleanerbot.flow.state.PasswordEnteringState;
 import org.telegram.repostcleanerbot.utils.InstantiationUtils;
 
 public class FlowFactory {
