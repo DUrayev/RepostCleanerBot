@@ -5,9 +5,7 @@ import org.telegram.abilitybots.api.objects.ReplyFlow;
 import org.telegram.repostcleanerbot.flow.AllChatsProcessing;
 import org.telegram.repostcleanerbot.flow.Login;
 import org.telegram.repostcleanerbot.flow.SpecificChatProcessing;
-import org.telegram.repostcleanerbot.flow.state.CleanRepostsFromAllChatsState;
-import org.telegram.repostcleanerbot.flow.state.CleanRepostsFromSpecificChatState;
-import org.telegram.repostcleanerbot.flow.state.PasswordEnteringState;
+import org.telegram.repostcleanerbot.flow.state.*;
 import org.telegram.repostcleanerbot.utils.InstantiationUtils;
 
 public class FlowFactory {
@@ -32,7 +30,15 @@ public class FlowFactory {
         return InstantiationUtils.getInstance(CleanRepostsFromSpecificChatState.class).getReply();
     }
 
-    public ReplyFlow getPasswordEnteringState() {
-        return InstantiationUtils.getInstance(PasswordEnteringState.class).getFlow();
+    public ReplyFlow getTwoStepVerificationPasswordEnteringState() {
+        return InstantiationUtils.getInstance(TwoStepVerificationPasswordEnteringState.class).getFlow();
+    }
+
+    public ReplyFlow getPhoneNumberEnteringState() {
+        return InstantiationUtils.getInstance(PhoneNumberEnteringState.class).getFlow();
+    }
+
+    public ReplyFlow getVerificationCodeEnteringState() {
+        return InstantiationUtils.getInstance(VerificationCodeEnteringState.class).getFlow();
     }
 }

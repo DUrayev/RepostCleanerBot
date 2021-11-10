@@ -4,10 +4,12 @@ import it.tdlight.client.APIToken;
 import org.codejargon.feather.Provides;
 import org.telegram.abilitybots.api.bot.AbilityBot;
 import org.telegram.repostcleanerbot.bot.BotContext;
+import org.telegram.repostcleanerbot.factory.KeyboardFactory;
 import org.telegram.repostcleanerbot.repository.UserAllRepostsGroupedByRepostedFromRepository;
 import org.telegram.repostcleanerbot.repository.UserChatsRepository;
 import org.telegram.repostcleanerbot.repository.UserChatsRepostedFromRepository;
 import org.telegram.repostcleanerbot.tdlib.ClientManager;
+import org.telegram.repostcleanerbot.utils.I18nService;
 import org.telegram.repostcleanerbot.utils.InstantiationUtils;
 
 import javax.inject.Named;
@@ -49,7 +51,6 @@ public class RepostCleanerModule {
     public String getBotApiHash() {
         return System.getenv().get(Constants.BOT_API_HASH);
     }
-
 
     @Provides
     @Singleton
@@ -93,4 +94,15 @@ public class RepostCleanerModule {
         return InstantiationUtils.getInstance(ClientManager.class, true);
     }
 
+    @Provides
+    @Singleton
+    public I18nService getI18nService() {
+        return new I18nService();
+    }
+
+    @Provides
+    @Singleton
+    public KeyboardFactory getKeyboardFactory() {
+        return InstantiationUtils.getInstance(KeyboardFactory.class, true);
+    }
 }

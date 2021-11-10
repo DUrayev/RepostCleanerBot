@@ -2,15 +2,12 @@ package org.telegram.repostcleanerbot.bot;
 
 import org.telegram.abilitybots.api.bot.AbilityBot;
 import org.telegram.abilitybots.api.bot.BaseAbilityBot;
-import org.telegram.repostcleanerbot.Constants;
-import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
+import org.telegram.repostcleanerbot.utils.I18nService;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import javax.inject.Inject;
-import javax.validation.constraints.NotNull;
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +20,9 @@ public class BotContext {
 
     @Inject
     private AbilityBot bot;
+
+    @Inject
+    private I18nService i18n;
 
     public Predicate<Update> isChatInState(String stateDbName) {
         return upd -> {
@@ -70,23 +70,12 @@ public class BotContext {
         }
     }
 
-    public <T extends Serializable, Method extends BotApiMethod<T>> T execute(Method method) {
-        try {
-            return bot.sender().execute(method);
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-
-    @NotNull
     public Predicate<Update> hasCallbackQuery(String... possibleCallbackData) {
         return upd -> upd.hasCallbackQuery() && Arrays.stream(possibleCallbackData).anyMatch(data -> upd.getCallbackQuery().getData().equalsIgnoreCase(data)) ;
     }
 
     public Predicate<Update> cancelKeyboardButtonSelected() {
-        return upd -> upd.hasMessage() && upd.getMessage().getText().equals(Constants.INLINE_BUTTONS.CANCEL_KEYBOARD_BUTTON) ;
+        return upd -> upd.hasMessage() && upd.getMessage().getText().equals(i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("cancel_keyboard_btn")) ;
     }
 
     public BaseAbilityBot bot() {

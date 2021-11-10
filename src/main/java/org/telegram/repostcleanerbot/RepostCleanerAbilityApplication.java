@@ -11,8 +11,7 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 public class RepostCleanerAbilityApplication {
     public static void main(String[] args) throws CantLoadLibrary {
         try {
-            // Initialize TDLight native libraries
-            Init.start();
+            Init.start(); // Initialize TDLight native libraries
             TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
             botsApi.registerBot(InstantiationUtils.getInstance(AbilityBot.class));
         } catch (TelegramApiException e) {

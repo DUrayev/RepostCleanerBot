@@ -8,24 +8,24 @@ public interface Constants {
     String BOT_API_ID = "REPOST_CLEANER_BOT_API_ID";
     String BOT_API_HASH = "REPOST_CLEANER_BOT_API_HASH";
 
+    String BOT_MESSAGES_PROPERTY_FILE = "BotMessages";
+
     String AUTHENTICATION_QR_CODE_IMAGE_NAME = "qr_code";
     int AUTHENTICATION_QR_CODE_IMAGE_SIZE = 250;
     int ANALYZE_ALL_CHATS_LIMIT = 50;
     int CHATS_LIMIT = 300;
 
     interface INLINE_BUTTONS {
-        String LOGIN = "Login";
+        String LOGIN = "LOGIN";
 
-        String PHONE_NUMBER_LOGIN = "Phone number";
-        String QR_CODE_LOGIN = "QR Code";
+        String PHONE_NUMBER_LOGIN = "PHONE_NUMBER_LOGIN";
+        String QR_CODE_LOGIN = "QR_CODE_LOGIN";
 
-        String ALL_CHATS = "All chats";
-        String SPECIFIC_CHAT = "Specific chat";
+        String ALL_CHATS = "ALL_CHATS_FLOW";
+        String SPECIFIC_CHAT = "SPECIFIC_CHAT_FLOW";
 
-        String START_ANALYZING_ALL_CHATS = "Start analyzing";
-        String CANCEL_ANALYZING_ALL_CHATS = "Cancel";
-
-        String CANCEL_KEYBOARD_BUTTON = "✖️ Cancel";
+        String START_ANALYZING_ALL_CHATS = "START_ANALYZING_ALL_CHATS";
+        String CANCEL_ANALYZING_ALL_CHATS = "CANCEL_ANALYZING_ALL_CHATS";
     }
 
     interface STATE_DB {
@@ -33,7 +33,9 @@ public interface Constants {
         String CLEAN_REPOSTS_FROM_SPECIFIC_CHAT_STATE_DB = "CLEAN_REPOSTS_FROM_SPECIFIC_CHAT_STATE_DB";
 
         String LOGIN_STATE_DB = "LOGIN_STATE_DB";
-        String PASSWORD_ENTERING_STATE_DB = "PASSWORD_ENTERING_STATE_DB";
+        String PHONE_NUMBER_ENTERING_STATE_DB = "PHONE_NUMBER_ENTERING_STATE_DB";
+        String VERIFICATION_CODE_ENTERING_STATE_DB = "VERIFICATION_CODE_ENTERING_STATE_DB";
+        String TWO_STEP_VERIFICATION_PASSWORD_ENTERING_STATE_DB = "TWO_STEP_VERIFICATION_PASSWORD_ENTERING_STATE_DB";
     }
 
     interface DB {

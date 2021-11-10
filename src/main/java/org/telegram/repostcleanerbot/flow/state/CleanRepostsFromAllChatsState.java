@@ -11,6 +11,7 @@ import org.telegram.repostcleanerbot.tdlib.EventManager;
 import org.telegram.repostcleanerbot.tdlib.client.BotEmbadedTelegramClient;
 import org.telegram.repostcleanerbot.tdlib.entity.Repost;
 import org.telegram.repostcleanerbot.tdlib.request.DeleteMessagesRequest;
+import org.telegram.repostcleanerbot.utils.I18nService;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
@@ -26,7 +27,6 @@ import java.util.stream.Collectors;
 
 import static org.telegram.abilitybots.api.util.AbilityUtils.getChatId;
 import static org.telegram.abilitybots.api.util.AbilityUtils.getUser;
-import static org.telegram.repostcleanerbot.Constants.INLINE_BUTTONS;
 import static org.telegram.repostcleanerbot.Constants.STATE_DB;
 
 public class CleanRepostsFromAllChatsState implements State {
@@ -40,12 +40,18 @@ public class CleanRepostsFromAllChatsState implements State {
     @Inject
     private ClientManager clientManager;
 
+    @Inject
+    private I18nService i18n;
+
+    @Inject
+    private KeyboardFactory keyboardFactory;
+
     @Override
     public Reply getReply() {
         return Reply.of((bot, upd) -> {
             botContext.hidePreviousReplyMarkup(upd);
             String selectedChatToClean = upd.getMessage().getText();
-            if(selectedChatToClean.equals(INLINE_BUTTONS.CANCEL_KEYBOARD_BUTTON)) {
+            if(selectedChatToClean.equals(i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("cancel_keyboard_btn"))) {
                 finishCleaningAndNotify(upd, false);
             } else {
                 List<List<Repost>> repostsListGroupedByRepostedFrom = repostsRepository.get(getUser(upd).getId());
@@ -77,11 +83,15 @@ public class CleanRepostsFromAllChatsState implements State {
                     repostsListGroupedByRepostedFrom.removeIf(groupedRepostsList -> groupedRepostsList.get(0).getRepostedFrom().getTitle().equals(selectedChatToClean));
                     if (repostsListGroupedByRepostedFrom.size() > 0) {
                         repostsRepository.save(getUser(upd).getId(), repostsListGroupedByRepostedFrom);
-                        botContext.execute(
+                        botContext.bot().silent().execute(
                                 SendMessage.builder()
-                                        .text("Reposts from channel '" + selectedChatToClean + "' are cleaned everywhere.\nWould you like to clean more reposts?")
+                                        .text(i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("all_chats.reposts_from_channel_are_cleaned_everywhere", selectedChatToClean))
                                         .chatId(getChatId(upd).toString())
-                                        .replyMarkup(KeyboardFactory.replyKeyboardWithCancelButtons(repostsListGroupedByRepostedFrom.stream().map(groupedList -> groupedList.get(0).getRepostedFrom().getTitle()).collect(Collectors.toList()), "Select channel name"))
+                                        .replyMarkup(keyboardFactory.replyKeyboardWithCancelButtons(
+                                                repostsListGroupedByRepostedFrom.stream().map(groupedList -> groupedList.get(0).getRepostedFrom().getTitle()).collect(Collectors.toList()),
+                                                i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("all_chats.select_channel_to_clean_keyboard_placeholder"),
+                                                getUser(upd).getLanguageCode()
+                                        ))
                                         .allowSendingWithoutReply(false)
                                         .build());
                     } else {
@@ -89,11 +99,15 @@ public class CleanRepostsFromAllChatsState implements State {
                     }
                 }
             } else {
-                botContext.execute(
+                botContext.bot().silent().execute(
                         SendMessage.builder()
-                                .text("Reposts of channel '" + selectedChatToClean + "' are  not cleaned in '" + listOfReposts.get(0).getRepostedIn().getTitle() + "' because of some unexpected error.\nYou can try one more time or cancel")
+                                .text(i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("all_chats.unexpected_error_cleaning_reposts_from_channel", selectedChatToClean, listOfReposts.get(0).getRepostedIn().getTitle()))
                                 .chatId(getChatId(upd).toString())
-                                .replyMarkup(KeyboardFactory.replyKeyboardWithCancelButtons(repostsListGroupedByRepostedFrom.stream().map(groupedList -> groupedList.get(0).getRepostedFrom().getTitle()).collect(Collectors.toList()), "Select channel name"))
+                                .replyMarkup(keyboardFactory.replyKeyboardWithCancelButtons(
+                                        repostsListGroupedByRepostedFrom.stream().map(groupedList -> groupedList.get(0).getRepostedFrom().getTitle()).collect(Collectors.toList()),
+                                        i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("all_chats.select_channel_to_clean_keyboard_placeholder"),
+                                        getUser(upd).getLanguageCode()
+                                ))
                                 .allowSendingWithoutReply(false)
                                 .build());
             }
@@ -103,12 +117,8 @@ public class CleanRepostsFromAllChatsState implements State {
     private void finishCleaningAndNotify(Update upd, boolean allRepostsAreCleaned) {
         botContext.exitState(upd, STATE_DB.CLEAN_REPOSTS_FROM_ALL_CHATS_STATE_DB);
         repostsRepository.save(getUser(upd).getId(), Collections.emptyList());
-
-        String responseText = "Ok, cleaning finished. You can /start again";
-        if(allRepostsAreCleaned) {
-            responseText = "What a spy! All reposts are cleaned. You can /start again";
-        }
-        botContext.execute(
+        String responseText = allRepostsAreCleaned ? i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("all_chats.cleaning_is_finished_all_reposts_are_cleaned") : i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("all_chats.cleaning_is_canceled");
+        botContext.bot().silent().execute(
                 SendMessage.builder()
                         .text(responseText)
                         .chatId(getChatId(upd).toString())

@@ -16,6 +16,7 @@ import org.telegram.repostcleanerbot.tdlib.entity.Repost;
 import org.telegram.repostcleanerbot.tdlib.entity.RepostsStat;
 import org.telegram.repostcleanerbot.tdlib.request.GetChatsRequest;
 import org.telegram.repostcleanerbot.tdlib.request.GetRepostsFromChatRequest;
+import org.telegram.repostcleanerbot.utils.I18nService;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -50,6 +51,12 @@ public class SpecificChatProcessing implements Flow {
     @Inject
     private ClientManager clientManager;
 
+    @Inject
+    private I18nService i18n;
+
+    @Inject
+    private KeyboardFactory keyboardFactory;
+
     @Override
     public ReplyFlow getFlow() {
         ReplyFlow chatToCleanSelectionFlow = ReplyFlow.builder(botContext.bot().db())
@@ -69,7 +76,7 @@ public class SpecificChatProcessing implements Flow {
 
                     botContext.bot().silent().execute(
                             SendMessage.builder()
-                                    .text("List of reposts in chat " + selectedTitleChatToClean + " is requested\nPlease, wait...")
+                                    .text(i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("specific_chat.list_of_reposts_in_chat_requested", selectedTitleChatToClean))
                                     .chatId(getChatId(upd).toString())
                                     .replyMarkup(ReplyKeyboardRemove.builder().removeKeyboard(true).build())
                                     .allowSendingWithoutReply(false)
@@ -81,9 +88,9 @@ public class SpecificChatProcessing implements Flow {
 
         Reply cancel = Reply.of((bot, upd) -> {
                     userChatsRepository.save(getUser(upd).getId(), Collections.emptyList());
-                    botContext.execute(
+                    botContext.bot().silent().execute(
                             SendMessage.builder()
-                                    .text("Ok, process is canceled.\nYou can /start again")
+                                    .text(i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("specific_chat.cleaning_is_canceled"))
                                     .chatId(getChatId(upd).toString())
                                     .replyMarkup(ReplyKeyboardRemove.builder().removeKeyboard(true).build())
                                     .build());
@@ -103,7 +110,7 @@ public class SpecificChatProcessing implements Flow {
                     getChatsRequestEventManager.addEventHandler(GetChatsRequest.EVENTS.CHATS_COUNT_RECEIVED, onChatsCountReceived(upd));
                     getChatsRequestEventManager.addEventHandler(GetChatsRequest.EVENTS.FINISH, onChatListReceived(upd));
 
-                    botContext.bot().silent().send("List of chats is requested", getChatId(upd));
+                    botContext.bot().silent().send(i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("specific_chat.list_of_chats_requested"), getChatId(upd));
                     getChatsRequest.execute(CHATS_LIMIT);
                 })
                 .next(cancel)
@@ -114,7 +121,7 @@ public class SpecificChatProcessing implements Flow {
     private Consumer<Object> onChatsCountReceived(Update upd) {
         return chatsCount -> {
             int chatsCountInt = Integer.parseInt(chatsCount.toString());
-            botContext.bot().silent().send("You have " + chatsCountInt + " chats (limit is " + CHATS_LIMIT + " )\nReceiving chat details...", getChatId(upd));
+            botContext.bot().silent().send(i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("specific_chat.chats_count_received", chatsCount, CHATS_LIMIT), getChatId(upd));
         };
     }
 
@@ -124,34 +131,37 @@ public class SpecificChatProcessing implements Flow {
             addIndexesToChatsTitle(chatsWhereYouCanSendMessage);
             userChatsRepository.save(getUser(upd).getId(), chatsWhereYouCanSendMessage);
 
-            botContext.execute(
+            botContext.bot().silent().execute(
                     SendMessage.builder()
-                            .text("There are " + chatsWhereYouCanSendMessage.size() + " chats where you can send messages\nWhich one do you want to analyze?")
+                            .text(i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("specific_chat.which_chat_to_analyze_and_clean", chatsWhereYouCanSendMessage.size()))
                             .chatId(getChatId(upd).toString())
-                            .replyMarkup(KeyboardFactory.replyKeyboardWithCancelButtons(chatsWhereYouCanSendMessage.stream().map(Chat::getTitle).collect(Collectors.toList()), "Select channel name"))
+                            .replyMarkup(keyboardFactory.replyKeyboardWithCancelButtons(
+                                    chatsWhereYouCanSendMessage.stream().map(Chat::getTitle).collect(Collectors.toList()),
+                                    i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("specific_chat.select_channel_to_clean_keyboard_placeholder"),
+                                    getUser(upd).getLanguageCode()
+                            ))
                             .allowSendingWithoutReply(false)
                             .build());
         };
     }
 
     private void addRepostsReceivingProgressNotifier(Update upd, EventManager getRepostsFromChatEventManager) {
-        String analyzedMessagesCountNotification = "%s messages were analyzed. Please, wait...";
         AtomicInteger analyzedMessagesCount = new AtomicInteger(0);
         Optional<Message> sentMessageOptional = botContext.bot().silent().execute(
                 SendMessage.builder()
-                        .text(String.format(analyzedMessagesCountNotification, analyzedMessagesCount.get()))
+                        .text(i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("specific_chat.analyzed_messages_count_progress_notification", analyzedMessagesCount.get()))
                         .chatId(getChatId(upd).toString())
-                        .replyMarkup(KeyboardFactory.withOneLineButtons()) //without this empty reply markup you're not able to edit message
+                        .replyMarkup(keyboardFactory.withOneLineButtons()) //without this empty reply markup you're not able to edit message
                         .allowSendingWithoutReply(false)
                         .build());
         if(sentMessageOptional.isPresent()) {
             Integer messageWithProcessedCountInfoId = sentMessageOptional.get().getMessageId();
             getRepostsFromChatEventManager.addEventHandler(GetRepostsFromChatRequest.EVENTS.BATCH_OF_MESSAGES_RECEIVED, messagesBatchSize -> {
                 if((Integer)messagesBatchSize > 0) {
-                    botContext.execute(EditMessageText.builder()
+                    botContext.bot().silent().execute(EditMessageText.builder()
                             .chatId(getChatId(upd).toString())
                             .messageId(messageWithProcessedCountInfoId)
-                            .text(String.format(analyzedMessagesCountNotification, analyzedMessagesCount.addAndGet((Integer) messagesBatchSize)))
+                            .text(i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("specific_chat.analyzed_messages_count_progress_notification", analyzedMessagesCount.addAndGet((Integer) messagesBatchSize)))
                             .build());
                 }
             });
@@ -165,19 +175,23 @@ public class SpecificChatProcessing implements Flow {
             if (totalRepostsCount > 0) {
                 List<RepostsStat> repostsStatList = RepostsStat.generate(allRepostsInSelectedChannel, getUser(upd).getId());
                 List<RepostsStat> repostsStatSortedList = sortByTotalRepostsCountDesc(repostsStatList);
-                addStatisticInfoToRepostsChatsTitle(repostsStatSortedList);
+                addStatisticInfoToRepostsChatsTitle(repostsStatSortedList, upd);
                 repostedFromRepository.save(getUser(upd).getId(), repostsStatSortedList);
 
                 botContext.enterState(upd, Constants.STATE_DB.CLEAN_REPOSTS_FROM_SPECIFIC_CHAT_STATE_DB);
-                botContext.execute(
+                botContext.bot().silent().execute(
                         SendMessage.builder()
-                                .text("Analyzing is finished\nYou have " + totalRepostsCount + " reposts in chat " + selectedTitleChatToClean + "\nWhich reposts do you want to clean?")
+                                .text(i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("specific_chat.analyzing_finished_select_channel_reposts_from_to_clean", totalRepostsCount, selectedTitleChatToClean))
                                 .chatId(getChatId(upd).toString())
-                                .replyMarkup(KeyboardFactory.replyKeyboardWithCancelButtons(repostsStatSortedList.stream().map(r -> r.getRepostedFrom().getTitle()).collect(Collectors.toList()), "Select channel name"))
+                                .replyMarkup(keyboardFactory.replyKeyboardWithCancelButtons(
+                                        repostsStatSortedList.stream().map(r -> r.getRepostedFrom().getTitle()).collect(Collectors.toList()),
+                                        i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("specific_chat.select_channel_to_clean_keyboard_placeholder"),
+                                        getUser(upd).getLanguageCode()
+                                ))
                                 .allowSendingWithoutReply(false)
                                 .build());
             } else {
-                botContext.bot().silent().send("Analyzing is finished, you don't have any reposts in chat " + selectedTitleChatToClean + "\nYou can /start process again", getChatId(upd));
+                botContext.bot().silent().send(i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("specific_chat.analyzing_finished_no_reposts_found", selectedTitleChatToClean), getChatId(upd));
             }
 
         };
@@ -202,9 +216,9 @@ public class SpecificChatProcessing implements Flow {
         }
     }
 
-    private void addStatisticInfoToRepostsChatsTitle(List<RepostsStat> repostsStatList) {
+    private void addStatisticInfoToRepostsChatsTitle(List<RepostsStat> repostsStatList, Update upd) {
         repostsStatList.forEach(repostsStat -> {
-            String newTitleWithStatInfo = repostsStat.getRepostedFrom().getTitle() + " [You: " + repostsStat.getRepostedByMeCount() + ", Not you: " + repostsStat.getRepostedNotByMeCount() + "]";
+            String newTitleWithStatInfo = i18n.forLanguage(getUser(upd).getLanguageCode()).getMsg("specific_chat.select_channel_reposts_from_to_clean_keyboard_button_with_stat", repostsStat.getRepostedFrom().getTitle(), repostsStat.getRepostedByMeCount(), repostsStat.getRepostedNotByMeCount());
             repostsStat.getRepostedFrom().setTitle(newTitleWithStatInfo);
         });
     }
