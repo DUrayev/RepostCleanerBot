@@ -1,5 +1,6 @@
 package org.telegram.repostcleanerbot;
 
+import it.tdlight.jni.TdApi;
 import lombok.extern.log4j.Log4j2;
 import org.telegram.abilitybots.api.bot.AbilityBot;
 import org.telegram.abilitybots.api.objects.Ability;
@@ -8,6 +9,8 @@ import org.telegram.abilitybots.api.objects.Privacy;
 import org.telegram.repostcleanerbot.bot.BotContext;
 import org.telegram.repostcleanerbot.factory.FlowFactory;
 import org.telegram.repostcleanerbot.factory.KeyboardFactory;
+import org.telegram.repostcleanerbot.tdlib.ClientManager;
+import org.telegram.repostcleanerbot.tdlib.client.BotEmbadedTelegramClient;
 import org.telegram.repostcleanerbot.utils.I18nService;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -31,6 +34,9 @@ public class RepostCleanerAbilityBot extends AbilityBot {
 
     @Inject
     private KeyboardFactory keyboardFactory;
+
+    @Inject
+    private ClientManager clientManager;
 
     private final long adminId;
 
@@ -71,6 +77,43 @@ public class RepostCleanerAbilityBot extends AbilityBot {
                 .reply(flowFactory.getPhoneNumberEnteringState())
                 .reply(flowFactory.getVerificationCodeEnteringState())
                 .build();
+    }
+
+    public Ability logoutAction() {
+        return Ability
+                .builder()
+                .name("logout")
+                .info("Clean authorization info from bot")
+                .enableStats()
+                .locality(Locality.ALL)
+                .privacy(Privacy.PUBLIC)
+                .action(this::handleLogout)
+                .build();
+    }
+
+    public Ability stopAction() {
+        return Ability
+                .builder()
+                .name("stop")
+                .info("Clean authorization info from bot")
+                .enableStats()
+                .locality(Locality.ALL)
+                .privacy(Privacy.PUBLIC)
+                .action(this::handleLogout)
+                .build();
+    }
+
+    private void handleLogout(org.telegram.abilitybots.api.objects.MessageContext ctx) {
+        BotEmbadedTelegramClient client = clientManager.getTelegramClientForUser(ctx.user().getId());
+        try {
+            client.send(new TdApi.LogOut(), okResult -> {
+                if(okResult.isError()) { //handler only any exception result. Success logging out is handled by "onLoggingOut" handler of Login.java
+                    botContext.handleLogOut(ctx.user(), ctx.chatId());
+                }
+            });
+        } catch (Exception e) {
+            botContext.handleLogOut(ctx.user(), ctx.chatId());
+        }
     }
 
     @Override

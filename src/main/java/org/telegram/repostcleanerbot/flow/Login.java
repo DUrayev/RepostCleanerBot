@@ -19,6 +19,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
@@ -70,6 +71,7 @@ public class Login implements Flow {
                         client.addUpdateHandler(TdApi.UpdateAuthorizationState.class, clientUpdate -> onWaitOtherDeviceConfirmation(client, clientUpdate, upd));
                         client.addUpdateHandler(TdApi.UpdateAuthorizationState.class, clientUpdate -> onWaitTwoStepVerificationPassword(client, clientUpdate, upd));
                         client.addUpdateHandler(TdApi.UpdateAuthorizationState.class, clientUpdate -> onSuccessAuthorization(client, clientUpdate, upd));
+                        client.addUpdateHandler(TdApi.UpdateAuthorizationState.class, clientUpdate -> onLoggingOut(client, clientUpdate, upd));
                         client.start(authenticationData);
                     }
                 })
@@ -232,6 +234,12 @@ public class Login implements Flow {
                             ))
                             .allowSendingWithoutReply(false)
                             .build());
+        }
+    }
+
+    private void onLoggingOut(BotEmbadedTelegramClient client, TdApi.UpdateAuthorizationState clientUpdate, Update botUpdate) {
+        if (clientUpdate.authorizationState.getConstructor() == TdApi.AuthorizationStateLoggingOut.CONSTRUCTOR) {
+            botContext.handleLogOut(getUser(botUpdate), getChatId(botUpdate));
         }
     }
 }

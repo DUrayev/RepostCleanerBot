@@ -31,4 +31,8 @@ public class ClientManager {
         }
         return client;
     }
+
+    public void removeClientForUser(Long userId) {
+        clientPerUser.remove(userId);
+    }
 }

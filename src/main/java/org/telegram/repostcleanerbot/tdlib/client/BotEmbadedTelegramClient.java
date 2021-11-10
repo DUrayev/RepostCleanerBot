@@ -38,7 +38,6 @@ public class BotEmbadedTelegramClient implements Authenticable {
     private final TDLibSettings settings;
     private AuthenticationData authenticationData;
 
-    private final Map<String, Set<CommandHandler>> commandHandlers = new ConcurrentHashMap<>();
     private final Set<ResultHandler<TdApi.Update>> updateHandlers = new ConcurrentHashMap<ResultHandler<TdApi.Update>, Object>().keySet(
             new Object());
     private final Set<ExceptionHandler> updateExceptionHandlers = new ConcurrentHashMap<ExceptionHandler, Object>().keySet(
