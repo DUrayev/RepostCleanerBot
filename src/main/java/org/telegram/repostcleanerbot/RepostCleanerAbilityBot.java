@@ -83,7 +83,7 @@ public class RepostCleanerAbilityBot extends AbilityBot {
         return Ability
                 .builder()
                 .name("logout")
-                .info("Clean authorization info from bot")
+                .info("Finish processing and terminate RepostCleaner bot session in your account")
                 .enableStats()
                 .locality(Locality.ALL)
                 .privacy(Privacy.PUBLIC)
@@ -95,11 +95,25 @@ public class RepostCleanerAbilityBot extends AbilityBot {
         return Ability
                 .builder()
                 .name("stop")
-                .info("Clean authorization info from bot")
+                .info("Finish processing and terminate RepostCleaner bot session in your account")
                 .enableStats()
                 .locality(Locality.ALL)
                 .privacy(Privacy.PUBLIC)
                 .action(this::handleLogout)
+                .build();
+    }
+
+    public Ability helpCommand() {
+        return Ability
+                .builder()
+                .name("help")
+                .info("Help info with commands description")
+                .enableStats()
+                .locality(Locality.ALL)
+                .privacy(Privacy.PUBLIC)
+                .action(ctx -> {
+                    botContext.bot().silent().send(i18n.forLanguage(ctx.user().getLanguageCode()).getMsg("help"), ctx.chatId());
+                })
                 .build();
     }
 
