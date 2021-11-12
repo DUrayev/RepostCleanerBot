@@ -19,7 +19,6 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
@@ -123,7 +122,7 @@ public class Login implements Flow {
                     .text(i18n.forLanguage(getUser(botUpdate).getLanguageCode()).getMsg("login.login_method_type_request"))
                     .chatId(getChatId(botUpdate).toString())
                     .replyMarkup(keyboardFactory.withOneLineButtons(
-                            InlineKeyboardButton.builder().text(i18n.forLanguage(getUser(botUpdate).getLanguageCode()).getMsg("login.phone_number_btn")).callbackData(INLINE_BUTTONS.PHONE_NUMBER_LOGIN).build(),
+                            //InlineKeyboardButton.builder().text(i18n.forLanguage(getUser(botUpdate).getLanguageCode()).getMsg("login.phone_number_btn")).callbackData(INLINE_BUTTONS.PHONE_NUMBER_LOGIN).build(),
                             InlineKeyboardButton.builder().text(i18n.forLanguage(getUser(botUpdate).getLanguageCode()).getMsg("login.qr_code_btn")).callbackData(INLINE_BUTTONS.QR_CODE_LOGIN).build()
                     ))
                     .allowSendingWithoutReply(false)
