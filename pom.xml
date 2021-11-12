@@ -54,6 +54,11 @@
             <version>${telegram.tdlib.api.natives.version}</version>
         </dependency>
         <dependency>
+            <groupId>it.tdlight</groupId>
+            <artifactId>tdlight-natives-linux-amd64</artifactId>
+            <version>${telegram.tdlib.api.natives.version}</version>
+        </dependency>
+        <dependency>
             <groupId>com.google.zxing</groupId>
             <artifactId>core</artifactId>
             <version>3.4.1</version>
