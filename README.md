@@ -9,7 +9,7 @@ User will need to scan provided QR code by mobile phone, so it's supposed that y
 
 To remove RepostCleanerBot from account user can send /logout or /stop command. In addition, it's possible to go to the Settings > Devices > Find "RepostCleaner" bot session and terminate it.
 
-# Authorization in bot by QR code
+# Authorization by QR code
 As you need to scan QR code by mobile phone, so it's supposed that you chat with the bot on another device (e.g. laptop).
 
 # Authorization without another device (using mobile phone only)
