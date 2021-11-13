@@ -2,15 +2,15 @@
 Telegram bot to clean reposts in chats.
 
 RepostCleanerBot can help you to analyze and clean reposts from any of your chats.
-Telegram Bot API doesn't have access to user messages history. However Telegram has Telegram Database Library (or simply TDLib), a tool that allow building your own Telegram clients.
+Telegram Bot API doesn't have access to user messages history. However, Telegram has Telegram Database Library (or simply TDLib), a tool that allow building your own Telegram clients.
 Therefore, RepostCleanerBot has embedded Telegram client, which has access to your history.
-As an additional Telegram client should be connected to user account, they need to pass an authorization and connect the RepostCleanerBot to your account as a new Device.
+As an additional Telegram client should be connected to user account, they need to pass an authorization to connect the RepostCleanerBot to your account as a new Device.
 User will need to scan provided QR code by mobile phone, so it's supposed that you chat with RepostCleanerBot on another device (e.g. laptop).
 
-To remove RepostCleanerBot from account user can send /logout or /stop command. In addition it's possible to go to the Settings > Devices > Find "RepostCleaner" bot session and terminate it.
+To remove RepostCleanerBot from account user can send /logout or /stop command. In addition, it's possible to go to the Settings > Devices > Find "RepostCleaner" bot session and terminate it.
 
 # Authorization in bot by QR code
-As you need to scan QR code by mobile phone, so it's supposed that you chat with bot on another device (e.g. laptop).
+As you need to scan QR code by mobile phone, so it's supposed that you chat with the bot on another device (e.g. laptop).
 
 # Authorization without another device (using mobile phone only)
 RepostCleanerBot supports authorization using phone number that is enabled for bot admins only.
@@ -44,7 +44,7 @@ You can obtain your Telegram User ID in different ways:
 
 - using existing Telegram bots, e.g.: [@userinfobot](https://t.me/userinfobot) or [@my_id_bot](https://t.me/my_id_bot)
 - send **/myid** command to [@RepostCleanerBot](https://t.me/RepostCleanerBot)
-- find different bot that provides your user id
+- find a different bot that provides your user id
 
 Save obtained **user id**
 
@@ -63,7 +63,7 @@ Build project by maven
 ```
 mvn clean install
 ```
-Run main class with all dependepcies 
+Run main class with all dependencies 
 ```
 java -Dfile.encoding=UTF-8 -cp target/repost-cleaner-bot.jar;target/dependency/* org.telegram.repostcleanerbot.RepostCleanerApplication
 ```
