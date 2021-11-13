@@ -25,6 +25,8 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.telegram.abilitybots.api.util.AbilityUtils.getChatId;
 import static org.telegram.abilitybots.api.util.AbilityUtils.getUser;
@@ -118,12 +120,18 @@ public class Login implements Flow {
 
     private void onWaitAuthenticationData(BotEmbadedTelegramClient client, TdApi.UpdateAuthorizationState clientUpdate, Update botUpdate) {
         if (clientUpdate.authorizationState.getConstructor() == TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR) {
+
+            List<InlineKeyboardButton> loginMethods = new ArrayList<>();
+            loginMethods.add(InlineKeyboardButton.builder().text(i18n.forLanguage(getUser(botUpdate).getLanguageCode()).getMsg("login.qr_code_btn")).callbackData(INLINE_BUTTONS.QR_CODE_LOGIN).build());
+            if(botContext.isAdmin(getUser(botUpdate).getId())) {
+                loginMethods.add(InlineKeyboardButton.builder().text(i18n.forLanguage(getUser(botUpdate).getLanguageCode()).getMsg("login.phone_number_btn")).callbackData(INLINE_BUTTONS.PHONE_NUMBER_LOGIN).build());
+            }
+
             botContext.bot().silent().execute(SendMessage.builder()
                     .text(i18n.forLanguage(getUser(botUpdate).getLanguageCode()).getMsg("login.login_method_type_request"))
                     .chatId(getChatId(botUpdate).toString())
                     .replyMarkup(keyboardFactory.withOneLineButtons(
-                            //InlineKeyboardButton.builder().text(i18n.forLanguage(getUser(botUpdate).getLanguageCode()).getMsg("login.phone_number_btn")).callbackData(INLINE_BUTTONS.PHONE_NUMBER_LOGIN).build(),
-                            InlineKeyboardButton.builder().text(i18n.forLanguage(getUser(botUpdate).getLanguageCode()).getMsg("login.qr_code_btn")).callbackData(INLINE_BUTTONS.QR_CODE_LOGIN).build()
+                            loginMethods.toArray(new InlineKeyboardButton[0])
                     ))
                     .allowSendingWithoutReply(false)
                     .build());
@@ -222,14 +230,20 @@ public class Login implements Flow {
     private void onSuccessAuthorization(BotEmbadedTelegramClient client, TdApi.UpdateAuthorizationState clientUpdate, Update botUpdate) {
         TdApi.AuthorizationState authorizationState = clientUpdate.authorizationState;
         if (authorizationState instanceof TdApi.AuthorizationStateReady) {
+
+            List<InlineKeyboardButton> processingFlowTypes = new ArrayList<>();
+            processingFlowTypes.add(InlineKeyboardButton.builder().text(i18n.forLanguage(getUser(botUpdate).getLanguageCode()).getMsg("login.specific_chat_flow_btn")).callbackData(INLINE_BUTTONS.SPECIFIC_CHAT).build());
+            if(botContext.isAdmin(getUser(botUpdate).getId())) {
+                processingFlowTypes.add(InlineKeyboardButton.builder().text(i18n.forLanguage(getUser(botUpdate).getLanguageCode()).getMsg("login.all_chats_flow_btn")).callbackData(INLINE_BUTTONS.ALL_CHATS).build());
+            }
+
             botContext.hidePreviousReplyMarkup(botUpdate);
             botContext.exitState(botUpdate, STATE_DB.LOGIN_STATE_DB);
             botContext.bot().silent().execute(SendMessage.builder()
                             .text(i18n.forLanguage(getUser(botUpdate).getLanguageCode()).getMsg("login.successful_login_ask_next_flow"))
                             .chatId(getChatId(botUpdate).toString())
                             .replyMarkup(keyboardFactory.withOneLineButtons(
-                                    InlineKeyboardButton.builder().text(i18n.forLanguage(getUser(botUpdate).getLanguageCode()).getMsg("login.specific_chat_flow_btn")).callbackData(INLINE_BUTTONS.SPECIFIC_CHAT).build(),
-                                    InlineKeyboardButton.builder().text(i18n.forLanguage(getUser(botUpdate).getLanguageCode()).getMsg("login.all_chats_flow_btn")).callbackData(INLINE_BUTTONS.ALL_CHATS).build()
+                                processingFlowTypes.toArray(new InlineKeyboardButton[0])
                             ))
                             .allowSendingWithoutReply(false)
                             .build());

@@ -38,6 +38,9 @@ public class VerificationCodeEnteringState implements Flow {
                 .onlyIf(Flag.MESSAGE)
                 .action((bot, upd) -> {
                     String verificationCode = upd.getMessage().getText();
+                    if(verificationCode.length() > 1) {
+                        verificationCode = verificationCode.substring(1); //skip first fake digit from code which is supposed to be added by user, to avoid telegram security of expiring shared codes
+                    }
                     BotEmbadedTelegramClient client = clientManager.getTelegramClientForUser(getUser(upd).getId());
 
                     TdApi.CheckAuthenticationCode checkAuthenticationCodeRequest = new TdApi.CheckAuthenticationCode(verificationCode);

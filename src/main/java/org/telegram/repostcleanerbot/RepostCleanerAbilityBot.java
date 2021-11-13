@@ -117,6 +117,20 @@ public class RepostCleanerAbilityBot extends AbilityBot {
                 .build();
     }
 
+    public Ability showIdCommand() {
+        return Ability
+                .builder()
+                .name("myid")
+                .info("Show user ID")
+                .enableStats()
+                .locality(Locality.ALL)
+                .privacy(Privacy.PUBLIC)
+                .action(ctx -> {
+                    botContext.bot().silent().send(ctx.user().getId().toString(), ctx.chatId());
+                })
+                .build();
+    }
+
     private void handleLogout(org.telegram.abilitybots.api.objects.MessageContext ctx) {
         BotEmbadedTelegramClient client = clientManager.getTelegramClientForUser(ctx.user().getId());
         try {

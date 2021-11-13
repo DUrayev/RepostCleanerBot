@@ -98,6 +98,10 @@ public class BotContext {
         return upd -> upd.hasMessage() && replyItems.contains(upd.getMessage().getText());
     }
 
+    public boolean isAdmin(long userId) {
+        return bot().isAdmin(userId) || bot().isCreator(userId);
+    }
+
     public void handleLogOut(User user, Long chatId) {
         this.exitState(user.getId(), Constants.STATE_DB.LOGIN_STATE_DB);
         this.exitState(user.getId(), Constants.STATE_DB.TWO_STEP_VERIFICATION_PASSWORD_ENTERING_STATE_DB);

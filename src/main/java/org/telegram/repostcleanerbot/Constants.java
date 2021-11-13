@@ -12,7 +12,7 @@ public interface Constants {
 
     String AUTHENTICATION_QR_CODE_IMAGE_NAME = "qr_code";
     int AUTHENTICATION_QR_CODE_IMAGE_SIZE = 250;
-    int ANALYZE_ALL_CHATS_LIMIT = 50;
+    int ANALYZE_ALL_CHATS_LIMIT = 300;
     int CHATS_LIMIT = 300;
 
     interface INLINE_BUTTONS {
