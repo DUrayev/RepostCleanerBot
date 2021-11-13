@@ -25,9 +25,8 @@ RepostCleanerBot supports the flow to analyze all chats history that is enabled 
 
 # Building from sources
 ### Prerequisites
-[Java 8](https://www.oracle.com/java/technologies/javase/javase8-archive-downloads.html) installed
-
-[Maven 3](https://maven.apache.org/download.cgi) installed
+- [Java 8](https://www.oracle.com/java/technologies/javase/javase8-archive-downloads.html) installed
+- [Maven 3](https://maven.apache.org/download.cgi) installed
 
 ### Register your bot in Telegram BotFather
 Register your bot by the following [instruction](https://core.telegram.org/bots#6-botfather)
